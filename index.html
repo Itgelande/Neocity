@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NeoCity · Зээлийн тооцоолуур</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+</head>
+<body style="margin:0;">
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo } = React;
+
+
+// ---------- Icons ----------
+const IconHome = (p) => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}>
+    <path d="M3 9.5 12 3l9 6.5" />
+    <path d="M5 9.5V21h14V9.5" />
+  </svg>
+);
+const IconBuilding = (p) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}>
+    <rect x="4" y="3" width="16" height="18" rx="1" />
+    <path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1" />
+  </svg>
+);
+const IconX = (p) => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" {...p}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+);
+
+// Decorative skyline silhouette for the hero — ties to the real-estate subject
+const Skyline = (p) => (
+  <svg viewBox="0 0 420 260" fill="none" {...p}>
+    <g fill="#A66E2E" fillOpacity="0.14">
+      <rect x="10" y="120" width="46" height="140" />
+      <rect x="64" y="70" width="38" height="190" />
+      <rect x="110" y="150" width="30" height="110" />
+      <rect x="148" y="40" width="52" height="220" />
+      <rect x="208" y="95" width="34" height="165" />
+      <rect x="250" y="20" width="46" height="240" />
+      <rect x="304" y="110" width="36" height="150" />
+      <rect x="348" y="65" width="42" height="195" />
+    </g>
+    <g fill="#A66E2E" fillOpacity="0.32">
+      <rect x="20" y="140" width="6" height="8" /><rect x="34" y="140" width="6" height="8" />
+      <rect x="20" y="160" width="6" height="8" /><rect x="34" y="160" width="6" height="8" />
+      <rect x="76" y="90" width="6" height="8" /><rect x="90" y="90" width="6" height="8" />
+      <rect x="76" y="110" width="6" height="8" /><rect x="90" y="110" width="6" height="8" />
+      <rect x="162" y="60" width="6" height="8" /><rect x="178" y="60" width="6" height="8" />
+      <rect x="162" y="80" width="6" height="8" /><rect x="178" y="80" width="6" height="8" />
+      <rect x="162" y="100" width="6" height="8" /><rect x="178" y="100" width="6" height="8" />
+      <rect x="262" y="45" width="6" height="8" /><rect x="278" y="45" width="6" height="8" />
+      <rect x="262" y="65" width="6" height="8" /><rect x="278" y="65" width="6" height="8" />
+      <rect x="262" y="85" width="6" height="8" /><rect x="278" y="85" width="6" height="8" />
+      <rect x="360" y="90" width="6" height="8" /><rect x="374" y="90" width="6" height="8" />
+      <rect x="360" y="110" width="6" height="8" /><rect x="374" y="110" width="6" height="8" />
+    </g>
+  </svg>
+);
+
+// ---------- Data ----------
+const APARTMENTS = [
+  { id: 1, rooms: 2, area: 47.88, price: 275310000 },
+  { id: 2, rooms: 3, area: 69.78, price: 401235000 },
+  { id: 3, rooms: 3, area: 72.55, price: 417162500 },
+  { id: 4, rooms: 3, area: 78.96, price: 454020000 },
+  { id: 5, rooms: 5, area: 120.93, price: 695347500 },
+  { id: 6, rooms: 4, area: 141.56, price: 813970000 },
+  { id: 7, rooms: 4, area: 149.18, price: 857785000 },
+  { id: 8, rooms: 4, area: 151.45, price: 870837500 },
+];
+
+const BANKS = [
+  { id: "golomt", name: "Голомт банк", minDown: 0.2, rateMin: 15.6, rateMax: 16.8, maxLoan: Infinity, block: null, note: "Түр барьцаа авахгүй" },
+  { id: "tuv", name: "Төрийн банк", minDown: 0.3, rateMin: 14.4, rateMax: 16.8, maxLoan: 1_000_000_000, block: null, note: "Хамгийн бага хүү · түр барьцаа шаардана" },
+  { id: "khas", name: "Хас банк", minDown: 0.25, rateMin: 19.2, rateMax: 19.2, maxLoan: 400_000_000, block: null, note: "Түр барьцаа авахгүй" },
+  { id: "mbank", name: "М банк", minDown: 0.2, rateMin: 14.4, rateMax: 15.0, maxLoan: 1_000_000_000, block: "N3", note: "Зөвхөн N3 блок · түр барьцаа авахгүй" },
+  { id: "khkhb", name: "Худалдаа хөгжлийн банк", minDown: 0.3, rateMin: 16.8, rateMax: 16.8, maxLoan: 1_000_000_000, block: null, note: "Нөхцөл эцэслэгдээгүй · түр барьцаа шаардана" },
+  { id: "khaan", name: "Хаан банк", minDown: null, rateMin: 1.35, rateMax: 1.35, maxLoan: 800_000_000, block: "N4", note: "Зөвхөн N4 блок · нөхцөл тодруулагдаж байна", unresolved: true },
+];
+
+const BLOCKS = [
+  { id: "other", label: "Бусад блок" },
+  { id: "N3", label: "N3 блок" },
+  { id: "N4", label: "N4 блок" },
+];
+
+const fmt = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+const fmtM = (n) => `${fmt(n)}₮`;
+
+function monthlyPayment(principal, annualRatePct, months) {
+  const r = annualRatePct / 100 / 12;
+  if (r === 0) return principal / months;
+  const factor = Math.pow(1 + r, months);
+  return (principal * r * factor) / (factor - 1);
+}
+
+// ---------- Design tokens ----------
+const C = {
+  bg: "#FBFAF8",
+  surface: "#FFFFFF",
+  border: "#E7E3DB",
+  ink: "#1B1A17",
+  sub: "#6B6559",
+  accent: "#A66E2E",
+  accentSoft: "rgba(166,110,46,0.08)",
+  good: "#1F7A63",
+  goodSoft: "rgba(31,122,99,0.09)",
+  faint: "#9B958A",
+};
+
+function App() {
+  const [aptId, setAptId] = useState(APARTMENTS[3].id);
+  const [downMode, setDownMode] = useState("percent");
+  const [downPct, setDownPct] = useState(30);
+  const [downAmt, setDownAmt] = useState(Math.round(APARTMENTS[3].price * 0.3));
+  const [years, setYears] = useState(20);
+  const [block, setBlock] = useState("other");
+
+  const apt = APARTMENTS.find((a) => a.id === aptId);
+  const months = years * 12;
+  const downAmount = downMode === "percent" ? apt.price * (downPct / 100) : Math.min(downAmt, apt.price);
+  const effectivePct = downAmount / apt.price;
+  const loanAmount = Math.max(apt.price - downAmount, 0);
+
+  function selectApartment(id) {
+    setAptId(id);
+    const newApt = APARTMENTS.find((a) => a.id === id);
+    if (downMode === "amount") setDownAmt((prev) => Math.min(prev, newApt.price));
+  }
+
+  function switchMode(mode) {
+    if (mode === downMode) return;
+    if (mode === "amount") setDownAmt(Math.round(apt.price * (downPct / 100)));
+    else setDownPct(Math.round((downAmt / apt.price) * 100));
+    setDownMode(mode);
+  }
+
+  const results = useMemo(() => {
+    return BANKS.map((b) => {
+      const reasons = [];
+      if (b.block && b.block !== block) reasons.push(`Зөвхөн ${b.block} блокт хамаарна`);
+      if (b.minDown != null && effectivePct < b.minDown - 1e-9)
+        reasons.push(`Хамгийн бага урьдчилгаа ${Math.round(b.minDown * 100)}%`);
+      if (loanAmount > b.maxLoan) reasons.push(`Зээлийн дээд хэмжээ ${fmtM(b.maxLoan)}`);
+      const eligible = reasons.length === 0 && !b.unresolved;
+      const rateAvg = (b.rateMin + b.rateMax) / 2;
+      const payment = eligible ? monthlyPayment(loanAmount, rateAvg, months) : null;
+      return { ...b, eligible, reasons, payment, rateAvg };
+    }).sort((a, b) => {
+      if (a.eligible && !b.eligible) return -1;
+      if (!a.eligible && b.eligible) return 1;
+      if (a.eligible && b.eligible) return a.payment - b.payment;
+      return 0;
+    });
+  }, [block, effectivePct, loanAmount, months]);
+
+  const bestId = results.find((r) => r.eligible)?.id;
+  const eligibleCount = results.filter((r) => r.eligible).length;
+
+  return (
+    <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", color: C.ink }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+        .disp { font-family: 'Fraunces', serif; }
+        .mono { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+        input[type="range"] { -webkit-appearance: none; height: 4px; border-radius: 2px; background: #E7E3DB; outline: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #A66E2E; cursor: pointer; border: 3px solid #FBFAF8; box-shadow: 0 0 0 1px #A66E2E; }
+        input[type="number"] { font-family: 'IBM Plex Mono', monospace; background: #FFFFFF; border: 1px solid #E7E3DB; color: #1B1A17; border-radius: 8px; padding: 9px 11px; font-size: 14px; width: 100%; box-sizing: border-box; }
+        .apt-card { transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+        .apt-card:hover { transform: translateY(-1px); }
+        button:focus-visible, input:focus-visible { outline: 2px solid #A66E2E; outline-offset: 2px; }
+        @media (max-width: 720px) { .hero-sky { display: none; } .hero-grid { grid-template-columns: 1fr !important; } }
+      `}</style>
+
+      <div style={{ borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: 2, background: C.accent }} />
+            <span className="disp" style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-0.01em" }}>NeoCity</span>
+          </div>
+          <span className="mono" style={{ fontSize: 11, color: C.sub, letterSpacing: "0.08em" }}>SENDLY-ТЭЙ ХАМТРАН</span>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "64px 24px 20px" }}>
+        <div className="hero-grid" style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 32, alignItems: "center" }}>
+          <div>
+            <div className="mono" style={{ color: C.accent, fontSize: 12, letterSpacing: "0.1em", marginBottom: 14 }}>
+              ОРОН СУУЦНЫ ЗЭЭЛИЙН ТООЦООЛУУР
+            </div>
+            <h1 className="disp" style={{ fontSize: 44, fontWeight: 600, margin: 0, lineHeight: 1.15, letterSpacing: "-0.01em" }}>
+              Байраа сонгоод,<br />зээлээ шууд тооцоол
+            </h1>
+            <p style={{ color: C.sub, marginTop: 16, fontSize: 16, lineHeight: 1.7, maxWidth: 480 }}>
+              Урьдчилгаагаа хувь эсвэл дүнгээр оруулаад, NeoCity-д оролцож буй
+              банкуудаас танд тохирохыг сарын төлбөрөөр нь харьцуулан үзээрэй.
+            </p>
+            <div style={{ display: "flex", gap: 28, marginTop: 28 }}>
+              <div>
+                <div className="disp" style={{ fontSize: 26, fontWeight: 600 }}>{APARTMENTS.length}</div>
+                <div style={{ fontSize: 12, color: C.sub }}>байрны сонголт</div>
+              </div>
+              <div>
+                <div className="disp" style={{ fontSize: 26, fontWeight: 600 }}>{BANKS.length}</div>
+                <div style={{ fontSize: 12, color: C.sub }}>хамтрагч банк</div>
+              </div>
+              <div>
+                <div className="disp" style={{ fontSize: 26, fontWeight: 600, color: C.good }}>{eligibleCount}</div>
+                <div style={{ fontSize: 12, color: C.sub }}>танд тохирч буй</div>
+              </div>
+            </div>
+          </div>
+          <Skyline className="hero-sky" style={{ width: "100%", height: "auto" }} />
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "20px 24px 100px" }}>
+        <div style={{ maxWidth: 760 }}>
+          <Section step="01" title="Байрны сонголт">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 10 }}>
+              {APARTMENTS.map((a) => {
+                const active = a.id === aptId;
+                return (
+                  <button
+                    key={a.id}
+                    className="apt-card"
+                    onClick={() => selectApartment(a.id)}
+                    style={{
+                      textAlign: "left", padding: "14px 16px", borderRadius: 10,
+                      border: active ? `1.5px solid ${C.accent}` : `1px solid ${C.border}`,
+                      background: active ? C.accentSoft : C.surface,
+                      cursor: "pointer", color: C.ink,
+                      boxShadow: active ? "none" : "0 1px 2px rgba(20,18,15,0.03)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.sub, fontSize: 12 }}>
+                      <IconHome /> {a.rooms} өрөө · {a.area} мкв
+                    </div>
+                    <div className="mono" style={{ fontSize: 16, fontWeight: 600, marginTop: 6 }}>{fmtM(a.price)}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
+
+          <Section step="02" title="Урьдчилгаа ба хугацаа">
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <span style={{ color: C.sub, fontSize: 13 }}>Урьдчилгаа</span>
+                <div style={{ display: "flex", gap: 4, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: 3 }}>
+                  {[{ id: "percent", label: "%" }, { id: "amount", label: "₮" }].map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => switchMode(m.id)}
+                      style={{
+                        padding: "4px 12px", fontSize: 12, borderRadius: 6, cursor: "pointer", border: "none",
+                        background: downMode === m.id ? C.accent : "transparent",
+                        color: downMode === m.id ? "#FFFFFF" : C.sub, fontWeight: 600,
+                      }}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {downMode === "percent" ? (
+                <>
+                  <div className="mono" style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                    {downPct}% · {fmtM(downAmount)}
+                  </div>
+                  <input type="range" min={0} max={60} value={downPct} onChange={(e) => setDownPct(Number(e.target.value))} style={{ width: "100%" }} aria-label="Урьдчилгааны хувь" />
+                </>
+              ) : (
+                <>
+                  <input type="number" min={0} max={apt.price} step={1000000} value={downAmt} onChange={(e) => setDownAmt(Math.max(0, Number(e.target.value)))} aria-label="Урьдчилгааны дүн" />
+                  <div className="mono" style={{ fontSize: 12, color: C.sub, marginTop: 6 }}>≈ {(effectivePct * 100).toFixed(1)}% байрны үнээс</div>
+                </>
+              )}
+
+              <div style={{ marginTop: 22, paddingTop: 22, borderTop: `1px solid ${C.border}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 8 }}>
+                  <span style={{ color: C.sub }}>Зээлийн хугацаа</span>
+                  <span className="mono" style={{ fontWeight: 600 }}>{years} жил</span>
+                </div>
+                <input type="range" min={5} max={20} value={years} onChange={(e) => setYears(Number(e.target.value))} style={{ width: "100%" }} aria-label="Зээлийн хугацаа" />
+              </div>
+
+              <div style={{ marginTop: 22, paddingTop: 22, borderTop: `1px solid ${C.border}` }}>
+                <div style={{ color: C.sub, fontSize: 13, marginBottom: 8 }}>Байршил</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {BLOCKS.map((b) => (
+                    <button
+                      key={b.id}
+                      onClick={() => setBlock(b.id)}
+                      style={{
+                        padding: "8px 14px", borderRadius: 8, fontSize: 13, cursor: "pointer",
+                        border: block === b.id ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+                        background: block === b.id ? C.accentSoft : "transparent",
+                        color: block === b.id ? C.ink : C.sub,
+                      }}
+                    >
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              marginTop: 14, padding: "16px 18px", borderRadius: 10, background: C.ink,
+              display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12,
+            }}>
+              <Stat label="Байрны үнэ" value={fmtM(apt.price)} dark />
+              <Stat label="Урьдчилгаа" value={fmtM(downAmount)} dark />
+              <Stat label="Зээлийн дүн" value={fmtM(loanAmount)} dark accent />
+            </div>
+          </Section>
+
+          <Section step="03" title="Банкны сонголтууд">
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {results.map((r) => (
+                <BankRow key={r.id} r={r} isBest={r.id === bestId} months={months} />
+              ))}
+            </div>
+            <p style={{ color: C.faint, fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>
+              Сарын төлбөрийг жилийн дундаж хүүгээр, {months} сарын хугацаагаар тооцов.
+              Эцсийн нөхцөл банк тус бүрийн шийдвэрээс хамаарч өөрчлөгдөж болно.
+            </p>
+          </Section>
+        </div>
+      </div>
+
+      <div style={{ borderTop: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto", padding: "24px 24px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <span className="mono" style={{ fontSize: 11, color: C.faint }}>NEOCITY × SENDLY</span>
+          <span style={{ fontSize: 12, color: C.faint }}>Энэ тооцоолол зөвлөмжийн шинжтэй бөгөөд эцсийн нөхцөл банкнаас хамаарна.</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ step, title, children }) {
+  return (
+    <div style={{ marginBottom: 40 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 16 }}>
+        <span className="mono" style={{ color: "#A66E2E", fontSize: 12 }}>{step}</span>
+        <h2 className="disp" style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Stat({ label, value, accent, dark }) {
+  return (
+    <div>
+      <div style={{ color: dark ? "rgba(255,255,255,0.5)" : "#6B6559", fontSize: 11, marginBottom: 4 }}>{label}</div>
+      <div className="mono" style={{ fontSize: 17, fontWeight: 600, color: accent ? "#D79A55" : dark ? "#FFFFFF" : "#1B1A17" }}>{value}</div>
+    </div>
+  );
+}
+
+function BankRow({ r, isBest, months }) {
+  return (
+    <div style={{
+      borderRadius: 10, border: isBest ? "1.5px solid #1F7A63" : "1px solid #E7E3DB",
+      background: r.eligible ? "#FFFFFF" : "#F3F1EC", padding: "16px 18px", opacity: r.eligible ? 1 : 0.6,
+      boxShadow: r.eligible ? "0 1px 2px rgba(20,18,15,0.03)" : "none",
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <IconBuilding color={r.eligible ? "#A66E2E" : "#9B958A"} />
+            <span style={{ fontWeight: 600, fontSize: 15 }}>{r.name}</span>
+            {isBest && (
+              <span className="mono" style={{ fontSize: 10, background: "rgba(31,122,99,0.09)", color: "#1F7A63", padding: "2px 8px", borderRadius: 20 }}>
+                БАГА ТӨЛБӨР
+              </span>
+            )}
+          </div>
+          <div style={{ color: "#6B6559", fontSize: 12, marginTop: 6 }}>{r.note}</div>
+          {!r.eligible && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, color: "#6B6559", fontSize: 12 }}>
+              <IconX /> {r.reasons.length ? r.reasons.join(" · ") : "Нөхцөл тодорхойгүй"}
+            </div>
+          )}
+        </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          {r.eligible && (
+            <>
+              <div className="mono" style={{ fontSize: 20, fontWeight: 600, color: "#1B1A17" }}>{fmtM(r.payment)}</div>
+              <div style={{ color: "#9B958A", fontSize: 11, marginTop: 2 }}>сард · {months} сар</div>
+              <div style={{ color: "#6B6559", fontSize: 11, marginTop: 2 }}>
+                {r.rateMin === r.rateMax ? `${r.rateMin}%` : `${r.rateMin}–${r.rateMax}%`} хүү
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
